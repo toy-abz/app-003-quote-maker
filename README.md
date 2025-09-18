@@ -39,5 +39,5 @@ Supports **copy to clipboard**, **favorites (saved in LocalStorage)**, and **sha
 
 ## スクリーンショット / Screenshots
 
-![Screenshot of the app](./assets/screenshot.png)
+![Screenshot of the app](./screenshot.png)
 
