@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Day03 — ランダム名言メーカー</title>
+  <meta name="description" content="ボタン1つで名言をランダム表示。コピー・お気に入り保存・X共有対応のシンプルなWebアプリ。">
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#121836; --text:#e9ecf1; --muted:#a7b0c3; --accent:#7aa2ff;
+      --ok:#6efacc; --warn:#ffb347; --shadow:0 10px 24px rgba(0,0,0,.35)
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;display:flex;justify-content:center;align-items:center;
+      background:radial-gradient(1000px 500px at 80% -10%,#16204a,transparent),var(--bg);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans JP",sans-serif;
+      color:var(--text)
+    }
+    .app{
+      width:min(96vw,640px);background:var(--panel);border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;box-shadow:var(--shadow);padding:24px
+    }
+    h1{margin:0 0 8px;font-size:20px}
+    .muted{color:var(--muted);font-size:12px}
+    .quote{
+      margin:20px 0;padding:18px;border-radius:14px;background:#0f1430;box-shadow:inset 0 0 0 1px #2a3566;
+      min-height:100px;display:flex;flex-direction:column;justify-content:center;gap:12px
+    }
+    .quote-text{font-size:clamp(18px,5vw,28px);line-height:1.5}
+    .quote-author{font-size:16px;text-align:right;color:var(--muted)}
+    .quote-source{font-size:12px;text-align:right;color:var(--muted)}
+    .buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    button{
+      border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer;
+      background:#0d1330;color:var(--text);border:1px solid #2a3566;transition:.2s
+    }
+    button:hover{background:#182050}
+    .btn.primary{background:linear-gradient(180deg,var(--accent),#557aff);color:#071022}
+    .btn.fav[aria-pressed="true"]{background:var(--ok);color:#071022}
+    .favorites{margin-top:20px}
+    .favorites h2{font-size:14px;color:var(--muted);margin-bottom:6px}
+    .fav-list{display:flex;flex-wrap:wrap;gap:6px}
+    .fav-item{
+      padding:4px 8px;border-radius:8px;background:#0f1430;font-size:12px;cursor:pointer;
+      border:1px solid #2a3566;color:var(--muted)
+    }
+    .sr{position:absolute;left:-9999px}
+  </style>
+</head>
+<body>
+  <main class="app" role="application" aria-labelledby="title">
+    <h1 id="title">Day03 — ランダム名言メーカー</h1>
+    <div class="muted">ボタン1つで名言を表示。コピー・お気に入り・X共有対応。</div>
+
+    <section class="quote" aria-live="polite" aria-atomic="true">
+      <div id="quote-text" class="quote-text">名言がここに表示されます</div>
+      <div id="quote-author" class="quote-author"></div>
+      <div id="quote-source" class="quote-source"></div>
+    </section>
+
+    <div class="buttons">
+      <button id="new" class="btn primary">新しい名言</button>
+      <button id="copy" class="btn">コピー</button>
+      <button id="fav" class="btn fav" aria-pressed="false">お気に入り</button>
+      <button id="share" class="btn">X共有</button>
+    </div>
+
+    <section class="favorites">
+      <h2>お気に入り</h2>
+      <div id="fav-list" class="fav-list"></div>
+    </section>
+
+    <div id="a11y" class="sr" aria-live="assertive"></div>
+  </main>
+
+<script>
+// 簡易データ
+const QUOTES = [
+  {id:"q1", text:"学びて時にこれを習う。また説ばしからずや。", author:"孔子", source:"論語"},
+  {id:"q2", text:"天才は1%のひらめきと99%の努力。", author:"トーマス・エジソン"},
+  {id:"q3", text:"成功は最良の教師ではない。失敗こそが人を謙虚にする。", author:"ビル・ゲイツ"},
+  {id:"q4", text:"Stay hungry, stay foolish.", author:"スティーブ・ジョブズ"},
+  {id:"q5", text:"千里の道も一歩から。", author:"老子"},
+  {id:"q6", text:"昨日から学び、今日を生き、明日へ希望を。", author:"アルベルト・アインシュタイン"}
+];
+
+const $ = (s)=>document.querySelector(s);
+const textEl = $('#quote-text');
+const authorEl = $('#quote-author');
+const sourceEl = $('#quote-source');
+const favBtn = $('#fav');
+const favList = $('#fav-list');
+const a11y = $('#a11y');
+
+let current = null;
+let favorites = JSON.parse(localStorage.getItem('fav-quotes')||'[]');
+
+function randomQuote(){
+  let q;
+  for(let i=0;i<5;i++){
+    q = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+    if(!current || q.id !== current.id) break;
+  }
+  showQuote(q);
+}
+function showQuote(q){
+  current = q;
+  textEl.textContent = q.text;
+  authorEl.textContent = q.author? `— ${q.author}` : "";
+  sourceEl.textContent = q.source||"";
+  favBtn.setAttribute('aria-pressed', favorites.includes(q.id));
+}
+function copyQuote(){
+  if(!current) return;
+  const str = `「${current.text}」 — ${current.author||""}${current.source? "（"+current.source+"）":""}`;
+  navigator.clipboard.writeText(str);
+  a11y.textContent="コピーしました";
+}
+function toggleFav(){
+  if(!current) return;
+  const i = favorites.indexOf(current.id);
+  if(i>=0) favorites.splice(i,1);
+  else favorites.push(current.id);
+  localStorage.setItem('fav-quotes', JSON.stringify(favorites));
+  favBtn.setAttribute('aria-pressed', favorites.includes(current.id));
+  renderFavs();
+}
+function renderFavs(){
+  favList.innerHTML="";
+  favorites.slice(-20).forEach(id=>{
+    const q = QUOTES.find(x=>x.id===id);
+    if(!q) return;
+    const div=document.createElement('div');
+    div.className='fav-item';
+    div.textContent=q.text.slice(0,12)+"…";
+    div.title=q.text;
+    div.onclick=()=>showQuote(q);
+    favList.appendChild(div);
+  });
+}
+function shareX(){
+  if(!current) return;
+  const str = `「${current.text}」 — ${current.author||""}`;
+  const url = location.href;
+  const share = `https://twitter.com/intent/tweet?text=${encodeURIComponent(str)}&url=${encodeURIComponent(url)}&hashtags=Quote,100DaysOfCode`;
+  window.open(share,'_blank');
+}
+
+// イベント
+$('#new').onclick=randomQuote;
+$('#copy').onclick=copyQuote;
+favBtn.onclick=toggleFav;
+$('#share').onclick=shareX;
+window.addEventListener('keydown',e=>{
+  if(e.code==='Space'){e.preventDefault();randomQuote();}
+  if(e.key==='c') copyQuote();
+  if(e.key==='f') toggleFav();
+});
+
+// 初期化
+renderFavs();
+randomQuote();
+</script>
+</body>
+</html>
